@@ -4,10 +4,7 @@
 if [[ ! $repopath ]]; then echo "Configure a repopath variable please before running. K THX BYE!"; return; fi
 
 for folder in "$repopath"/*/; 
-do 
-  (
-  cd "$folder" || exit
-  printf "syncing %s" "$folder"
-  git pull
-  )
+do
+  printf "Syncing %s : " "$folder"
+  git -C "$folder" pull
 done; 

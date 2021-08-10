@@ -46,6 +46,14 @@ TF_VAR_gitlab_username=$(lpass show --username $GITLAB_ENTRY)
 TF_VAR_gitlab_password=$(lpass show --password $GITLAB_ENTRY)
 TF_VAR_gitlab_personal_access_token=$(lpass show --note $GITLAB_ENTRY | jq --raw-output .PersonalAccessToken)
 
-export TF_VAR_okta_username TF_VAR_okta_password TF_VAR_simple_ad_username TF_VAR_simple_ad_password TF_VAR_gitlab_username TF_VAR_gitlab_password TF_VAR_gitlab_personal_access_token
+RMQ_STAGING_ENTRY="rabbit staging - ryan-peay"
+RMQ_STAGING_USERNAME=$(lpass show --username "$RMQ_STAGING_ENTRY")
+RMQ_STAGING_PASSWORD=$(lpass show --password "$RMQ_STAGING_ENTRY")
+
+RMQ_PRODUCTION_ENTRY="rabbit production - ryan-peay"
+RMQ_PRODUCTION_USERNAME=$(lpass show --username "$RMQ_PRODUCTION_ENTRY")
+RMQ_PRODUCTION_PASSWORD=$(lpass show --password "$RMQ_PRODUCTION_ENTRY")
+
+export TF_VAR_okta_username TF_VAR_okta_password TF_VAR_simple_ad_username TF_VAR_simple_ad_password TF_VAR_gitlab_username TF_VAR_gitlab_password TF_VAR_gitlab_personal_access_token RMQ_PRODUCTION_USERNAME RMQ_PRODUCTION_PASSWORD RMQ_STAGING_USERNAME RMQ_STAGING_PASSWORD
 
 lpass logout --force
