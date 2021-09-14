@@ -17,11 +17,13 @@ def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict):
 
 def main(
 #input parameters
+initialfile: str = "",
 subnetvar: str = "10.2.4.0/24",
 netTimeout: int = 1000,
 netRetries: int = 1,
 tasmotacommandfile: typer.FileText = typer.Option(..., mode="r"),
-outputfile: typer.FileText = typer.Option(..., mode="w")):
+outputfile: typer.FileText = typer.Option(..., mode="w")
+):
 
   #Convert subnet string to ip_network
   validatedSubnet = ipaddress.ip_network(subnetvar, strict=False)
@@ -30,8 +32,12 @@ outputfile: typer.FileText = typer.Option(..., mode="w")):
   tasmotaCommands = json.load(tasmotacommandfile)
 
   #Build initial dictionary for all devices.
-  outputData = { "tasmotas" : {}}
-
+  if initialfile != "":
+    with open(initialfile, "r") as f:
+      outputData = json.loads(f.read())
+  else:
+    outputData = { "tasmotas" : {}}
+  
   #Loop hosts in subnet range
   for ipAddr in validatedSubnet.hosts():
     
@@ -61,6 +67,10 @@ outputfile: typer.FileText = typer.Option(..., mode="w")):
 
           #Update final output dictionary
           outputData["tasmotas"].update(dictUpdate)
+          
+          #Update results to file as JSON
+          outputfile.seek(0)
+          json.dump(outputData, outputfile, indent=2)
 
         #Device didn't give back Tasmota data, report to CLI
         else:
@@ -74,9 +84,6 @@ outputfile: typer.FileText = typer.Option(..., mode="w")):
     #Nothing at this IP
     if netPresence.ret_code == 1:
       print(ipAddressString + " is closed")
-
-  #Save results to file as JSON
-  json.dump(outputData, outputfile, indent=2)
 
 if __name__ == "__main__":
   typer.run(main)
