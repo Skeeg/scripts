@@ -5,10 +5,25 @@ import pyping
 import typer
 import ipaddress
 
-# import sys
+def runTasmotaCommands(tasIpAddr: str, tasCommand: str, baseDict: str):
+  d = json.loads(baseDict)
+  # print(d)
+  cmdBasePath = 'http://' + tasIpAddr + '/cm?cmnd=' + tasCommand
+  # print(cmdBasePath)
+  response = requests.get(cmdBasePath)
+  # print(response)
+  response.raise_for_status()
+  # print(response.raise_for_status)
+  jsonResponse = response.json()
+  # print(jsonResponse)
+  commandDict = { tasCommand : {}}
+  # print(commandDict)
+  d[tasIpAddr].update(commandDict)
+  # print(d)
+  d[tasIpAddr][tasCommand].update(jsonResponse)
+  # print(json.dumps(d))
+  return json.dumps(d)
 
-# print('Number of arguments:', len(sys.argv), 'arguments.')
-# print('Argument List:', str(sys.argv))
 def main(
 #input parameters
 subnetvar: str = "10.2.4.0/24", 
@@ -26,7 +41,7 @@ outputfile: typer.FileText = typer.Option(..., mode="w")):
   outputData = { "tasmotas" : {}}
   for ipAddr in validatedSubnet.hosts():
     # if checkHost(ipAddress,port) == True:
-    ipAddressString = format(ipaddress.IPv4Address(ipAddr))
+    ipAddressString = str(format(ipaddress.IPv4Address(ipAddr)))
     r = pyping.ping(ipAddressString, timeout=1000, count=1, udp = True)
     if r.ret_code == 0:
       sanityUri = 'http://' + ipAddressString + '/cm?cmnd=status%202'
@@ -35,17 +50,13 @@ outputfile: typer.FileText = typer.Option(..., mode="w")):
         tasCheck.raise_for_status()
         if tasCheck.status_code == 200:
           print(ipAddressString + " collecting Tasmota device configurations")
-          baseDict = { str(ipAddressString) :{}}
+          baseDict = '{"' + str(ipAddressString) + '":{}}'
+          # print(baseDict)
           for command in tasmotaCommands["Commands"]:
-            cmdBasePath = 'http://' + ipAddressString + '/cm?cmnd=' + command
-            response = requests.get(cmdBasePath)
-            response.raise_for_status()
-            jsonResponse = response.json()
-            commandDict = { str(command) : {}}
-            baseDict[ipAddressString].update(commandDict)
-            baseDict[ipAddressString][command].update(jsonResponse)
-            outputData["tasmotas"].update(baseDict)
-          # print(json.dumps(baseDict))
+            dictUpdate = json.loads(runTasmotaCommands(ipAddressString, command, baseDict))
+            # print(dictUpdate)
+            outputData["tasmotas"].update(dictUpdate)
+            print(outputData)
         else:
           print(ipAddressString + " appears not to be a Tasmota device")
       except Exception as err:
