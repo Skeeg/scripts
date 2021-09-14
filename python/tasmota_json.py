@@ -5,66 +5,77 @@ import pyping
 import typer
 import ipaddress
 
-def runTasmotaCommands(tasIpAddr: str, tasCommand: str, baseDict: str):
-  d = json.loads(baseDict)
-  # print(d)
+def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict):
   cmdBasePath = 'http://' + tasIpAddr + '/cm?cmnd=' + tasCommand
-  # print(cmdBasePath)
   response = requests.get(cmdBasePath)
-  # print(response)
   response.raise_for_status()
-  # print(response.raise_for_status)
   jsonResponse = response.json()
-  # print(jsonResponse)
   commandDict = { tasCommand : {}}
-  # print(commandDict)
-  d[tasIpAddr].update(commandDict)
-  # print(d)
-  d[tasIpAddr][tasCommand].update(jsonResponse)
-  # print(json.dumps(d))
-  return json.dumps(d)
+  baseDict[tasIpAddr].update(commandDict)
+  baseDict[tasIpAddr][tasCommand].update(jsonResponse)
+  return baseDict
 
 def main(
 #input parameters
-subnetvar: str = "10.2.4.0/24", 
+subnetvar: str = "10.2.4.0/24",
+netTimeout: int = 1000,
+netRetries: int = 1,
 tasmotacommandfile: typer.FileText = typer.Option(..., mode="r"),
 outputfile: typer.FileText = typer.Option(..., mode="w")):
 
-  validatedSubnet = ipaddress.ip_network(subnetvar, strict=True)
-  timeout = 1
+  #Convert subnet string to ip_network
+  validatedSubnet = ipaddress.ip_network(subnetvar, strict=False)
   
-  # for ipAddr in validatedSubnet.hosts():
-  #   print(format(ipaddress.IPv4Address(ipAddr)))
-  
+  #Bring in JSON formatted command set.
   tasmotaCommands = json.load(tasmotacommandfile)
 
+  #Build initial dictionary for all devices.
   outputData = { "tasmotas" : {}}
+
+  #Loop hosts in subnet range
   for ipAddr in validatedSubnet.hosts():
-    # if checkHost(ipAddress,port) == True:
+    
     ipAddressString = str(format(ipaddress.IPv4Address(ipAddr)))
-    r = pyping.ping(ipAddressString, timeout=1000, count=1, udp = True)
-    if r.ret_code == 0:
+
+    #Check for network presence before checking HTTP
+    netPresence = pyping.ping(ipAddressString, timeout=netTimeout, count=netRetries, udp = True)
+
+    if netPresence.ret_code == 0:
+      #This is a good endpoint to confirm we are actually talking to Tasmota firmware
       sanityUri = 'http://' + ipAddressString + '/cm?cmnd=status%202'
       try:
+        #Execute Tasmota device sanity check
         tasCheck = requests.get(sanityUri)
         tasCheck.raise_for_status()
+
+        #We look to have a Tasmota
         if tasCheck.status_code == 200:
           print(ipAddressString + " collecting Tasmota device configurations")
-          baseDict = '{"' + str(ipAddressString) + '":{}}'
-          # print(baseDict)
+          
+          #Setup device specific dictionary
+          dictUpdate = { str(ipAddressString) : {} }
+
+          #Iterate over commands to query data and update device specific dictionary
           for command in tasmotaCommands["Commands"]:
-            dictUpdate = json.loads(runTasmotaCommands(ipAddressString, command, baseDict))
-            # print(dictUpdate)
-            outputData["tasmotas"].update(dictUpdate)
-            print(outputData)
+            dictUpdate = compileTasmotaDict(ipAddressString, command, dictUpdate)
+
+          #Update final output dictionary
+          outputData["tasmotas"].update(dictUpdate)
+
+        #Device didn't give back Tasmota data, report to CLI
         else:
           print(ipAddressString + " appears not to be a Tasmota device")
+      
+      #Device threw an error, print details
       except Exception as err:
         print(f'An error occurred on {ipAddressString}: {err}')
         pass
-    if r.ret_code == 1:
+    
+    #Nothing at this IP
+    if netPresence.ret_code == 1:
       print(ipAddressString + " is closed")
 
+  #Save results to file as JSON
   json.dump(outputData, outputfile, indent=2)
 
 if __name__ == "__main__":
