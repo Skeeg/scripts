@@ -1,0 +1,24 @@
+{
+  "Commands" : [
+    "Hostname",
+    "DeviceName",
+    "FriendlyName1",
+    "Topic",
+    "FullTopic",
+    "GroupTopic",
+    "Template",
+    "SetOption19",
+    "Module",
+    "SwitchMode",
+    "PowerRetain",
+    "SensorRetain",
+    "SerialLog",
+    "Timezone",
+    "TimeDST",
+    "TimeSTD",
+    "Latitude",
+    "Longitude",
+    "Rule",
+    "Timers"
+  ]
+}
