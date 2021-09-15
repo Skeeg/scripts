@@ -15,13 +15,43 @@ def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict):
   baseDict[tasIpAddr][tasCommand].update(jsonResponse)
   return baseDict
 
+def backLogGeneration(
+  commandDict: dict, 
+  configDict: dict,
+  imperativeFile: str):
+  if os.path.isfile(imperativeFile):
+    with open(imperativeFile, "r") as imperativeFileObj:
+      imperativeData = json.loads(imperativeFileObj.read())
+  else:
+    imperativeData = { "tasmotas" : {}}
+  
+  for device in configDict["tasmotas"]:
+    baseDict = { str(device) : {} }
+    for customCommand in commandDict["CustomBacklog"]:
+      indexedData = configDict["tasmotas"][device]
+      for item in commandDict["CustomBacklog"][customCommand]:
+        indexedData = indexedData[item]
+      # print('"' + customCommand + '" : ' + json.dumps(indexedData))
+      customCommandDict = {customCommand : indexedData}
+      # customCommandDict = { str(customCommand) : {}}
+      baseDict[device].update(customCommandDict)
+    
+    # #Update final output dictionary
+    imperativeData["tasmotas"].update(baseDict)
+    
+    # #Update results to file as JSON
+    with open(imperativeFile, "w") as outputfile:
+      json.dump(imperativeData, outputfile, indent=2)
+  
+
 def main(
 #input parameters
 configFile: str = "",
 subnetvar: str = "10.2.4.0/24",
 netTimeout: int = 1000,
 netRetries: int = 1,
-tasmotacommandfile: typer.FileText = typer.Option(..., mode="r")
+tasmotacommandfile: typer.FileText = typer.Option(..., mode="r"),
+imperativeFile: str = ""
 ):
 
   #Convert subnet string to ip_network
@@ -37,6 +67,9 @@ tasmotacommandfile: typer.FileText = typer.Option(..., mode="r")
   else:
     outputData = { "tasmotas" : {}}
   
+  if imperativeFile != "":
+    backLogGeneration(tasmotaCommands, outputData, imperativeFile)
+
   #Loop hosts in subnet range
   for ipAddr in validatedSubnet.hosts():
     

@@ -21,5 +21,31 @@
     "Rule",
     "Status 0",
     "Timers"
-  ]
+  ],
+  "Backlog" : {
+  },
+  "CustomBacklog" : {
+    "Hostname" : ["Hostname","Hostname"],
+    "DeviceName" : ["DeviceName","DeviceName"],
+    "FriendlyName1" : ["FriendlyName1","FriendlyName1"],
+    "Topic" : ["Topic","Topic"],
+    "SwitchMode" : ["SwitchMode","SwitchMode1"],
+    "PowerRetain" : ["PowerRetain","PowerRetain"],
+    "SensorRetain" : ["SensorRetain","SensorRetain"],
+    "SetOption19" : ["SetOption19","SetOption19"],
+    "SerialLog" : ["Status 0","StatusLOG","SerialLog"],
+    "Template" : ["Template"],
+    "Module" : ["Status 0","Status","Module"],
+    "GroupTopic1" : ["GroupTopic","GroupTopic1"],
+    "GroupTopic2" : ["GroupTopic","GroupTopic2"],
+    "GroupTopic3" : ["GroupTopic","GroupTopic3"],
+    "GroupTopic4" : ["GroupTopic","GroupTopic4"],
+    "Timers" : ["Timers","Timers"],
+    "Timer1" : ["Timers","Timers1","Timer1"],
+    "Timer2" : ["Timers","Timers1","Timer2"],
+    "Timer3" : ["Timers","Timers1","Timer3"],
+    "Timer4" : ["Timers","Timers1","Timer4"],
+    "Rule" : ["Rule", "Rule1"],
+    "Rule1" : ["Rule","Rules"]
+  }
 }
