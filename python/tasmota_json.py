@@ -1,9 +1,9 @@
 import json
 import requests
-import time
 import pyping
 import typer
 import ipaddress
+import os.path
 
 def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict):
   cmdBasePath = 'http://' + tasIpAddr + '/cm?cmnd=' + tasCommand
@@ -17,12 +17,11 @@ def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict):
 
 def main(
 #input parameters
-initialfile: str = "",
+configFile: str = "",
 subnetvar: str = "10.2.4.0/24",
 netTimeout: int = 1000,
 netRetries: int = 1,
-tasmotacommandfile: typer.FileText = typer.Option(..., mode="r"),
-outputfile: typer.FileText = typer.Option(..., mode="w")
+tasmotacommandfile: typer.FileText = typer.Option(..., mode="r")
 ):
 
   #Convert subnet string to ip_network
@@ -32,9 +31,9 @@ outputfile: typer.FileText = typer.Option(..., mode="w")
   tasmotaCommands = json.load(tasmotacommandfile)
 
   #Build initial dictionary for all devices.
-  if initialfile != "":
-    with open(initialfile, "r") as f:
-      outputData = json.loads(f.read())
+  if os.path.isfile(configFile):
+    with open(configFile, "r") as inputFile:
+      outputData = json.loads(inputFile.read())
   else:
     outputData = { "tasmotas" : {}}
   
@@ -69,8 +68,9 @@ outputfile: typer.FileText = typer.Option(..., mode="w")
           outputData["tasmotas"].update(dictUpdate)
           
           #Update results to file as JSON
-          outputfile.seek(0)
-          json.dump(outputData, outputfile, indent=2)
+
+          with open(configFile, "w") as outputfile:
+            json.dump(outputData, outputfile, indent=2)
 
         #Device didn't give back Tasmota data, report to CLI
         else:
