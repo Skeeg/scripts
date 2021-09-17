@@ -4,6 +4,7 @@ import pyping
 import typer
 import ipaddress
 import os.path
+import urllib.parse 
 
 def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict):
   cmdBasePath = 'http://' + tasIpAddr + '/cm?cmnd=' + tasCommand
@@ -44,7 +45,8 @@ def imperativeGeneration(
       json.dump(imperativeData, outputfile, indent=2)
 
 def backLogGeneration(
-  declaredConfigFile: str):
+  declaredConfigFile: str,
+  pushConfigs: bool):
   if os.path.isfile(declaredConfigFile):
     with open(declaredConfigFile, "r") as declaredConfigFileObj:
       declaredConfigData = json.loads(declaredConfigFileObj.read())
@@ -52,12 +54,19 @@ def backLogGeneration(
     declaredConfigData = { "tasmotas" : {}}
   
   for device in declaredConfigData["tasmotas"]:
-    print(device)
     backlogStr = str("Backlog")
     for backlogCommand in declaredConfigData["tasmotas"][device]:
       # print(declaredConfigData["tasmotas"][device][backlogCommand])
       backlogStr = backlogStr + " " + str(backlogCommand) + " " + json.dumps(declaredConfigData["tasmotas"][device][backlogCommand]).strip('"') + ";" # + " " + str(imperativeData["tasmotas"][device][backlogCommand] + ";"))
-    print(backlogStr)
+    
+    if pushConfigs == True:
+      backlogUri = 'http://' + device + '/cm?cmnd=' + urllib.parse.quote_plus(backlogStr)
+      print(backlogUri)
+      r = requests.get(backlogUri)
+      print(r.raise_for_status())
+    else:
+      print(device + ": " + backlogStr)
+
 
 def main(
 #input parameters
@@ -67,7 +76,9 @@ netTimeout: int = 1000,
 netRetries: int = 1,
 tasmotacommandfile: typer.FileText = typer.Option(..., mode="r"),
 imperativeFile: str = "",
-declaredFile: str = ""
+declaredFile: str = "",
+pollDevices: bool = False,
+pushConfigs: bool = False
 ):
 
   #Convert subnet string to ip_network
@@ -83,58 +94,67 @@ declaredFile: str = ""
   else:
     outputData = { "tasmotas" : {}}
   
-  if imperativeFile != "":
-    imperativeGeneration(tasmotaCommands, outputData, imperativeFile)
-  if declaredFile != "":
-    backLogGeneration(declaredFile)
-
-  #Loop hosts in subnet range
-  for ipAddr in validatedSubnet.hosts():
-    
-    ipAddressString = str(format(ipaddress.IPv4Address(ipAddr)))
-
-    #Check for network presence before checking HTTP
-    netPresence = pyping.ping(ipAddressString, timeout=netTimeout, count=netRetries, udp = True)
-
-    if netPresence.ret_code == 0:
-      #This is a good endpoint to confirm we are actually talking to Tasmota firmware
-      sanityUri = 'http://' + ipAddressString + '/cm?cmnd=status%202'
-      try:
-        #Execute Tasmota device sanity check
-        tasCheck = requests.get(sanityUri)
-        tasCheck.raise_for_status()
-
-        #We look to have a Tasmota
-        if tasCheck.status_code == 200:
-          print(ipAddressString + " collecting Tasmota device configurations")
-          
-          #Setup device specific dictionary
-          dictUpdate = { str(ipAddressString) : {} }
-
-          #Iterate over commands to query data and update device specific dictionary
-          for command in tasmotaCommands["Commands"]:
-            dictUpdate = compileTasmotaDict(ipAddressString, command, dictUpdate)
-
-          #Update final output dictionary
-          outputData["tasmotas"].update(dictUpdate)
-          
-          #Update results to file as JSON
-
-          with open(configFile, "w") as outputfile:
-            json.dump(outputData, outputfile, indent=2)
-
-        #Device didn't give back Tasmota data, report to CLI
-        else:
-          print(ipAddressString + " appears not to be a Tasmota device")
+  if pollDevices == True:
+    if configFile == "":
+      print("--configfile option required")
+      exit()
+    #Loop hosts in subnet range
+    for ipAddr in validatedSubnet.hosts():
       
-      #Device threw an error, print details
-      except Exception as err:
-        print(f'An error occurred on {ipAddressString}: {err}')
-        pass
-    
-    #Nothing at this IP
-    if netPresence.ret_code == 1:
-      print(ipAddressString + " is closed")
+      ipAddressString = str(format(ipaddress.IPv4Address(ipAddr)))
 
+      #Check for network presence before checking HTTP
+      netPresence = pyping.ping(ipAddressString, timeout=netTimeout, count=netRetries, udp = True)
+
+      if netPresence.ret_code == 0:
+        #This is a good endpoint to confirm we are actually talking to Tasmota firmware
+        sanityUri = 'http://' + ipAddressString + '/cm?cmnd=status%202'
+        try:
+          #Execute Tasmota device sanity check
+          tasCheck = requests.get(sanityUri)
+          tasCheck.raise_for_status()
+
+          #We look to have a Tasmota
+          if tasCheck.status_code == 200:
+            print(ipAddressString + " collecting Tasmota device configurations")
+            
+            #Setup device specific dictionary
+            dictUpdate = { str(ipAddressString) : {} }
+
+            #Iterate over commands to query data and update device specific dictionary
+            for command in tasmotaCommands["Commands"]:
+              dictUpdate = compileTasmotaDict(ipAddressString, command, dictUpdate)
+
+            #Update final output dictionary
+            outputData["tasmotas"].update(dictUpdate)
+            
+            #Update results to file as JSON
+
+            with open(configFile, "w") as outputfile:
+              json.dump(outputData, outputfile, indent=2)
+
+          #Device didn't give back Tasmota data, report to CLI
+          else:
+            print(ipAddressString + " appears not to be a Tasmota device")
+        
+        #Device threw an error, print details
+        except Exception as err:
+          print(f'An error occurred on {ipAddressString}: {err}')
+          pass
+      
+      #Nothing at this IP
+      if netPresence.ret_code == 1:
+        print(ipAddressString + " is closed")
+
+  if imperativeFile != "":
+    if configFile == "":
+      print("--configfile option required")
+      exit()
+    imperativeGeneration(tasmotaCommands, outputData, imperativeFile)
+    
+  if declaredFile != "":
+    backLogGeneration(declaredFile, pushConfigs)
+
+  
 if __name__ == "__main__":
   typer.run(main)
