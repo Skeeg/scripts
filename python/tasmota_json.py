@@ -4,7 +4,7 @@ import pyping
 import typer
 import ipaddress
 import os.path
-import urllib.parse 
+import urllib.parse
 
 def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict):
   cmdBasePath = 'http://' + tasIpAddr + '/cm?cmnd=' + tasCommand
@@ -60,10 +60,18 @@ def backLogGeneration(
       backlogStr = backlogStr + " " + str(backlogCommand) + " " + json.dumps(declaredConfigData["tasmotas"][device][backlogCommand]).strip('"') + ";" # + " " + str(imperativeData["tasmotas"][device][backlogCommand] + ";"))
     
     if pushConfigs == True:
-      backlogUri = 'http://' + device + '/cm?cmnd=' + urllib.parse.quote_plus(backlogStr)
-      print(backlogUri)
-      r = requests.get(backlogUri)
-      print(r.raise_for_status())
+      netPresence = pyping.ping(device, timeout=1000, count=1, udp = True)
+      if netPresence.ret_code == 0:
+        try:
+          backlogUri = 'http://' + device + '/cm?cmnd=' + urllib.parse.quote_plus(backlogStr)
+          print(backlogUri)
+          r = requests.get(backlogUri)
+        except Exception as err:
+          print(f'An error occurred on {device}: {err}')
+          pass
+      else:
+        print(device + ": didn't respond to pyping")
+      #Device threw an error, print details
     else:
       print(device + ": " + backlogStr)
 
