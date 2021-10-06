@@ -25,10 +25,12 @@
   "Backlog" : {
   },
   "CustomBacklog" : {
+    "OtaUrl" : ["Status 0","StatusPRM","OtaUrl"],
     "Hostname" : ["Hostname","Hostname"],
     "DeviceName" : ["DeviceName","DeviceName"],
     "FriendlyName1" : ["FriendlyName1","FriendlyName1"],
     "Topic" : ["Topic","Topic"],
+    "FullTopic" : ["FullTopic","FullTopic"],
     "SwitchMode" : ["SwitchMode","SwitchMode1"],
     "PowerRetain" : ["PowerRetain","PowerRetain"],
     "SensorRetain" : ["SensorRetain","SensorRetain"],
@@ -40,12 +42,12 @@
     "GroupTopic2" : ["GroupTopic","GroupTopic2"],
     "GroupTopic3" : ["GroupTopic","GroupTopic3"],
     "GroupTopic4" : ["GroupTopic","GroupTopic4"],
-    "Timer1" : ["Timers","Timers1","Timer1"],
-    "Timer2" : ["Timers","Timers1","Timer2"],
-    "Timer3" : ["Timers","Timers1","Timer3"],
-    "Timer4" : ["Timers","Timers1","Timer4"],
+    "Timer1" : ["Timers","Timer1"],
+    "Timer2" : ["Timers","Timer2"],
+    "Timer3" : ["Timers","Timer3"],
+    "Timer4" : ["Timers","Timer4"],
     "Timers" : ["Timers","Timers"],
-    "Rule1" : ["Rule", "Rules"],
-    "Rule" : ["Rule","Rule1"]
+    "Rule1" : ["Rule", "Rule1", "Rules"],
+    "Rule" : ["Rule", "Rule1", "State"]
   }
 }

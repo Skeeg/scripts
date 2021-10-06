@@ -5,6 +5,34 @@ import typer
 import ipaddress
 import os.path
 import urllib.parse
+import random
+import paho.mqtt.client as mqtt_client
+
+broker = '10.2.2.4'
+port = 1883
+client_id = f'python-mqtt-{random.randint(0, 1000)}'
+
+def connect_mqtt():
+  def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+      print("Connected to MQTT Broker!")
+    else:
+      print("Failed to connect, return code %d\n", rc)
+  # Set Connecting Client ID
+  client = mqtt_client.Client(client_id)
+  client.username_pw_set("Admin", "Admin")
+  client.on_connect = on_connect
+  client.connect(broker, port)
+  return client
+
+def publish(client, topic, msg, qos, retain):
+  result = client.publish(topic, msg, qos, retain)
+  status = result[0]
+  if status == 0:
+    print(f"Topic: `{topic}`, QOS: `{qos}`, Retained: `{retain}`")
+    print(f"Published `{msg}`")
+  else:
+    print(f"Failed to send message to topic {topic}")
 
 def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict):
   cmdBasePath = 'http://' + tasIpAddr + '/cm?cmnd=' + tasCommand
@@ -47,6 +75,8 @@ def imperativeGeneration(
 def backLogGeneration(
   declaredConfigFile: str,
   pushConfigs: bool):
+  client = connect_mqtt()
+  client.loop_start()
   if os.path.isfile(declaredConfigFile):
     with open(declaredConfigFile, "r") as declaredConfigFileObj:
       declaredConfigData = json.loads(declaredConfigFileObj.read())
@@ -54,24 +84,15 @@ def backLogGeneration(
     declaredConfigData = { "tasmotas" : {}}
   
   for device in declaredConfigData["tasmotas"]:
-    backlogStr = str("Backlog")
+    backlogStr = str("")
+
     for backlogCommand in declaredConfigData["tasmotas"][device]:
-      # print(declaredConfigData["tasmotas"][device][backlogCommand])
       backlogStr = backlogStr + " " + str(backlogCommand) + " " + json.dumps(declaredConfigData["tasmotas"][device][backlogCommand]).strip('"') + ";" # + " " + str(imperativeData["tasmotas"][device][backlogCommand] + ";"))
-    
+
     if pushConfigs == True:
-      netPresence = pyping.ping(device, timeout=1000, count=1, udp = True)
-      if netPresence.ret_code == 0:
-        try:
-          backlogUri = 'http://' + device + '/cm?cmnd=' + urllib.parse.quote_plus(backlogStr)
-          print(backlogUri)
-          r = requests.get(backlogUri)
-        except Exception as err:
-          print(f'An error occurred on {device}: {err}')
-          pass
-      else:
-        print(device + ": didn't respond to pyping")
-      #Device threw an error, print details
+      topic = str("cmnd/" + declaredConfigData["tasmotas"][device]["Topic"] + "/backlog")
+      publish(client, topic, backlogStr, 0, False)
+        
     else:
       print(device + ": " + backlogStr)
 
