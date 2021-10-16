@@ -64,7 +64,10 @@ def imperativeGeneration(
       customCommandDict = {customCommand : indexedData}
       # customCommandDict = { str(customCommand) : {}}
       baseDict[device].update(customCommandDict)
-    
+    #Establish Specific Configuration Topic
+    configurationTopic = configDict["tasmotas"][device]["Status 0"]["Status"]["Topic"]
+    customCommandDict = {"ConfigurationTopic" : configurationTopic}
+    baseDict[device].update(customCommandDict)
     # #Update final output dictionary
     imperativeData["tasmotas"].update(baseDict)
     
@@ -73,6 +76,7 @@ def imperativeGeneration(
       json.dump(imperativeData, outputfile, indent=2)
 
 def backLogGeneration(
+  commandDict: dict, 
   declaredConfigFile: str,
   pushConfigs: bool):
   client = connect_mqtt()
@@ -86,15 +90,22 @@ def backLogGeneration(
   for device in declaredConfigData["tasmotas"]:
     backlogStr = str("")
 
-    for backlogCommand in declaredConfigData["tasmotas"][device]:
-      backlogStr = backlogStr + " " + str(backlogCommand) + " " + json.dumps(declaredConfigData["tasmotas"][device][backlogCommand]).strip('"') + ";" # + " " + str(imperativeData["tasmotas"][device][backlogCommand] + ";"))
+    for backlogCommand in commandDict["CustomBacklog"]:
+      # Quotes with a string are interpreted literally and should be excluded
+      commandSetting = json.dumps(declaredConfigData["tasmotas"][device][backlogCommand]).strip('"')
+      # If a setting double quotes, it will have gotten stripped and will be '', which needs to be corrected.
+      if commandSetting == '':
+        commandSetting = '""'
+      # backlogStr = backlogStr + str(backlogCommand) + " " + json.dumps(declaredConfigData["tasmotas"][device][backlogCommand]) + "; " # + " " + str(imperativeData["tasmotas"][device][backlogCommand] + ";"))
+      backlogStr = backlogStr + str(backlogCommand) + " " + commandSetting + "; " # + " " + str(imperativeData["tasmotas"][device][backlogCommand] + ";"))
 
     if pushConfigs == True:
-      topic = str("cmnd/" + declaredConfigData["tasmotas"][device]["Topic"] + "/backlog")
-      publish(client, topic, backlogStr, 0, False)
+      configurationTopic = declaredConfigData["tasmotas"][device]["ConfigurationTopic"]
+      publishTopic = str("cmnd/" + configurationTopic + "/backlog")
+      publish(client, publishTopic, backlogStr, 0, False)
         
     else:
-      print(device + ": " + backlogStr)
+      print(device + ": backlog " + backlogStr)
 
 
 def main(
@@ -182,7 +193,7 @@ pushConfigs: bool = False
     imperativeGeneration(tasmotaCommands, outputData, imperativeFile)
     
   if declaredFile != "":
-    backLogGeneration(declaredFile, pushConfigs)
+    backLogGeneration(tasmotaCommands, declaredFile, pushConfigs)
 
   
 if __name__ == "__main__":

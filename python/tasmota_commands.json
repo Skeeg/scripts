@@ -49,5 +49,8 @@
     "Timers" : ["Timers","Timers"],
     "Rule1" : ["Rule", "Rule1", "Rules"],
     "Rule" : ["Rule", "Rule1", "State"]
+  },
+  "MQTT" : {
+    "ConfigurationTopic" : ["Status 0","Status","Topic"]
   }
 }
