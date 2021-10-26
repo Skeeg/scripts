@@ -4,9 +4,9 @@ import pyping
 import typer
 import ipaddress
 import os.path
-import urllib.parse
 import random
 import paho.mqtt.client as mqtt_client
+from collections import OrderedDict
 
 broker = '10.2.2.4'
 port = 1883
@@ -34,7 +34,7 @@ def publish(client, topic, msg, qos, retain):
   else:
     print(f"Failed to send message to topic {topic}")
 
-def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict):
+def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict, sortDict: bool):
   cmdBasePath = 'http://' + tasIpAddr + '/cm?cmnd=' + tasCommand
   response = requests.get(cmdBasePath)
   response.raise_for_status()
@@ -42,7 +42,12 @@ def compileTasmotaDict(tasIpAddr: str, tasCommand: str, baseDict: dict):
   commandDict = { tasCommand : {}}
   baseDict[tasIpAddr].update(commandDict)
   baseDict[tasIpAddr][tasCommand].update(jsonResponse)
-  return baseDict
+  if sortDict == False:
+    return baseDict
+  else:
+    sortedDict = baseDict
+    sortedDict[tasIpAddr] = OrderedDict(sorted(baseDict[tasIpAddr].items()))
+    return sortedDict
 
 def imperativeGeneration(
   commandDict: dict, 
@@ -70,10 +75,11 @@ def imperativeGeneration(
     baseDict[device].update(customCommandDict)
     # #Update final output dictionary
     imperativeData["tasmotas"].update(baseDict)
+    imperativeDataSorted = OrderedDict(sorted(imperativeData.items()))
     
     # #Update results to file as JSON
     with open(imperativeFile, "w") as outputfile:
-      json.dump(imperativeData, outputfile, indent=2)
+      json.dump(imperativeDataSorted, outputfile, indent=2)
 
 def backLogGeneration(
   commandDict: dict, 
@@ -118,7 +124,8 @@ tasmotacommandfile: typer.FileText = typer.Option(..., mode="r"),
 imperativeFile: str = "",
 declaredFile: str = "",
 pollDevices: bool = False,
-pushConfigs: bool = False
+pushConfigs: bool = False,
+sortedCommandOutput: bool = False
 ):
 
   #Convert subnet string to ip_network
@@ -163,15 +170,16 @@ pushConfigs: bool = False
 
             #Iterate over commands to query data and update device specific dictionary
             for command in tasmotaCommands["Commands"]:
-              dictUpdate = compileTasmotaDict(ipAddressString, command, dictUpdate)
+              dictUpdate = compileTasmotaDict(ipAddressString, command, dict(dictUpdate), sortedCommandOutput)
 
             #Update final output dictionary
             outputData["tasmotas"].update(dictUpdate)
+            outputDataSorted = OrderedDict(sorted(outputData.items()))
             
             #Update results to file as JSON
 
             with open(configFile, "w") as outputfile:
-              json.dump(outputData, outputfile, indent=2)
+              json.dump(outputDataSorted, outputfile, indent=2)
 
           #Device didn't give back Tasmota data, report to CLI
           else:
