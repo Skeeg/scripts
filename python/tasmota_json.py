@@ -107,6 +107,12 @@ def backLogGeneration(
 
     if pushConfigs == True:
       configurationTopic = declaredConfigData["tasmotas"][device]["ConfigurationTopic"]
+      for individualCommand in commandDict["IndividualCommands"]:
+        publishTopic = str("cmnd/" + configurationTopic + "/" + individualCommand)
+        commandSetting = json.dumps(declaredConfigData["tasmotas"][device][individualCommand]).strip('"')
+        if commandSetting == '':
+          commandSetting = '""'
+        publish(client, publishTopic, commandSetting, 0, False)
       publishTopic = str("cmnd/" + configurationTopic + "/backlog")
       publish(client, publishTopic, backlogStr, 0, False)
         
