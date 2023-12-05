@@ -1,7 +1,15 @@
 #!/bin/bash
 # shellcheck disable=SC2154
 
-unset SCRIPT_REPO_PATH
+git-default-branch() {
+  git remote show $(git remote) | grep "HEAD branch" | sed 's/.*: //'
+}
+
+git-switch-default() {
+  git switch $(git-default-branch)
+}
+
+unset SCRIPT_REPO_PATH SCRIPT_AUTO_SWITCH
 #load environment repopath var to SCRIPT_REPO_PATH if present, overwritten by specifiying --repo-path option.
 if [[ $repopath ]]; then SCRIPT_REPO_PATH="$repopath"; fi
 
@@ -14,6 +22,10 @@ case $key in
     SCRIPT_REPO_PATH="$2"
     shift # past argument
     shift # past value
+    ;;
+    --auto-switch-on-missing)
+    SCRIPT_AUTO_SWITCH="TRUE"
+    shift # past argument
     ;;
     *)    # unknown option
     POSITIONAL+=("$1") # save it in an array for later
@@ -28,4 +40,15 @@ for folder in "$SCRIPT_REPO_PATH"/*/;
 do
   printf "Syncing %s : " "$folder"
   git -C "$folder" pull
+  SCRIPT_FAIL_PULL=$?
+  [[ $SCRIPT_AUTO_SWITCH == "TRUE" ]] && { 
+    [[ $SCRIPT_FAIL_PULL == 1 ]] && {
+      [[ $(git pull 2> >(grep -c -e 'no such ref was fetched')) == 1 ]] && {
+        git-switch-default
+        git pull
+      }
+    }
+  }
 done; 
+
+unset SCRIPT_REPO_PATH SCRIPT_AUTO_SWITCH SCRIPT_FAIL_PULL

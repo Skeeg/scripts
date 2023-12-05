@@ -1,6 +1,8 @@
 #!/bin/bash
 # shellcheck source=/dev/null
 
+# Newer AWS_PROFILE based function https://github.com/Skeeg/.dotfiles/blob/main/.profile.d/terraform.plugin.zsh#L50-L74
+
 unset DEBUG_STR ENVIRON OUTPUT_NAME SCRIPTPATH
 
 POSITIONAL=()
@@ -40,8 +42,10 @@ do
     esac
 done
 
-TERRAFORM_DATA=$(terraform output -json | \
-    jq --raw-output '.automation_target_groups.value.target_group_arns[]')
+# TERRAFORM_DATA=$(terraform output -json | \
+#     jq --raw-output '.automation_target_groups.value.target_group_arns[]')
+TERRAFORM_DATA=$(terraform show --json | \
+    jq -r '.values.outputs.automation_target_groups.value.target_group_arns[]')
 
 if [[ -n $ENVIRON ]]; 
     then 
@@ -53,9 +57,10 @@ fi
 for TARGET_GROUP in $(echo "$TERRAFORM_DATA" | tr '\n' ' ')
 do
     echo "$TARGET_GROUP"
-    for INSTANCE_ID in $( \
-        aws elbv2 describe-target-health --target-group-arn "$TARGET_GROUP" $DEBUG_STR| \
-            jq --raw-output '.TargetHealthDescriptions[].Target.Id')
+    TARGET_HEALTH=$(aws elbv2 describe-target-health --target-group-arn "$TARGET_GROUP" $DEBUG_STR)
+    echo "$TARGET_HEALTH" | jq -c '.TargetHealthDescriptions[]'
+    for INSTANCE_ID in $(echo "$TARGET_HEALTH" | \
+        jq --raw-output '.TargetHealthDescriptions[].Target.Id')
     do
         # echo $INSTANCE_ID
         # aws ec2 describe-instances --instance-ids $INSTANCE_ID
@@ -68,8 +73,8 @@ do
                     | $Name
                 ')
                 echo "$INSTANCE_NAME : $INSTANCE_ID"
-            else 
-                echo "$INSTANCE_ID"
+            # else 
+            #     echo "$INSTANCE_ID"
         fi
     done
 done

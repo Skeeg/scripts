@@ -7,8 +7,11 @@ import os.path
 import random
 import paho.mqtt.client as mqtt_client
 from collections import OrderedDict
+import os
 
-broker = '10.2.2.4'
+envVars = dict(os.environ)
+
+broker = envVars['MQTT_BROKER']
 port = 1883
 client_id = f'python-mqtt-{random.randint(0, 1000)}'
 
@@ -20,7 +23,7 @@ def connect_mqtt():
       print("Failed to connect, return code %d\n", rc)
   # Set Connecting Client ID
   client = mqtt_client.Client(client_id)
-  client.username_pw_set("Admin", "Admin")
+  client.username_pw_set(envVars['MQTT_USERNAME'], envVars['MQTT_PASSWORD'])
   client.on_connect = on_connect
   client.connect(broker, port)
   return client
@@ -123,7 +126,7 @@ def backLogGeneration(
 def main(
 #input parameters
 configFile: str = "",
-subnetvar: str = "10.2.4.0/24",
+subnetvar: str = envVars['IOT_SUBNET'],
 netTimeout: int = 1000,
 netRetries: int = 1,
 tasmotacommandfile: typer.FileText = typer.Option(..., mode="r"),

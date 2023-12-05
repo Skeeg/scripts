@@ -17,7 +17,7 @@ do
     esac
 done
 
-tfoutputdata=$(terraform output -json)
+tfoutputdata=$(terraform show --json | jq -r '.values.outputs')
 for tgname in $(echo "$tfoutputdata" | jq --raw-output '.tg_attachments.value | keys[]')
 do
   echo \#$tgname
